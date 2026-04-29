@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% block title %}Report {{ report.quarter }} — {{ client.name }}{% endblock %}
+{% block topbar_title %}Report — {{ report.quarter }}{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="/">Dashboard</a> <span>›</span>
+  <a href="/client/{{ client.id }}">{{ client.name }}</a> <span>›</span>
+  {{ report.quarter }} Report
+</div>
+
+<div class="section-header fade-up">
+  <div>
+    <h2>{{ report.quarter }} — Report Generated</h2>
+    <p style="color:var(--muted);margin-top:4px">{{ client.name }}{% if client.is_married and client.name2 %} & {{ client.name2 }}{% endif %} · {{ report.report_date[:10] }}</p>
+  </div>
+  <div style="display:flex;gap:10px">
+    <a href="/client/{{ client.id }}/report" class="btn btn-outline">New Report</a>
+  </div>
+</div>
+
+<!-- Download Cards -->
+<div class="form-grid fade-up stagger-1" style="margin-bottom:28px">
+
+  <div class="card" style="border-color:var(--green)">
+    <div class="card-body" style="text-align:center;padding:32px">
+      <div style="font-size:40px;margin-bottom:12px">📊</div>
+      <div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:var(--navy);margin-bottom:6px">SACS Report</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:20px">Simple Automated Cash Flow System<br>Monthly cashflow diagram</div>
+      <a href="/client/{{ client.id }}/report/{{ report.id }}/sacs.pdf"
+         class="btn btn-gold" style="width:100%;justify-content:center" target="_blank">
+        ↓ Download SACS PDF
+      </a>
+    </div>
+  </div>
+
+  <div class="card" style="border-color:var(--blue-accent)">
+    <div class="card-body" style="text-align:center;padding:32px">
+      <div style="font-size:40px;margin-bottom:12px">🔵</div>
+      <div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:var(--navy);margin-bottom:6px">TCC Report</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:20px">Total Client Chart<br>Net worth overview</div>
+      <a href="/client/{{ client.id }}/report/{{ report.id }}/tcc.pdf"
+         class="btn btn-primary" style="width:100%;justify-content:center" target="_blank">
+        ↓ Download TCC PDF
+      </a>
+    </div>
+  </div>
+
+</div>
+
+<!-- Cashflow visual summary -->
+<div class="cf-visual fade-up stagger-2">
+  <div class="cf-bubble">
+    <div class="cf-circle green">
+      <div class="amount">${{ "{:,.0f}".format(report.inflow or 0) }}</div>
+      <div class="label">INFLOW</div>
+    </div>
+    <div class="cf-label">Monthly Take-Home</div>
+  </div>
+  <div class="cf-arrow">→</div>
+  <div class="cf-bubble">
+    <div class="cf-circle red">
+      <div class="amount">${{ "{:,.0f}".format(report.outflow or 0) }}</div>
+      <div class="label">OUTFLOW</div>
+    </div>
+    <div class="cf-label">Monthly Expenses</div>
+  </div>
+  <div class="cf-arrow">→</div>
+  <div class="cf-bubble">
+    <div class="cf-circle blue">
+      {% set excess = (report.inflow or 0) - (report.outflow or 0) %}
+      <div class="amount">${{ "{:,.0f}".format(excess) }}</div>
+      <div class="label">EXCESS</div>
+    </div>
+    <div class="cf-label">To Private Reserve</div>
+  </div>
+  <div style="flex:1"></div>
+  <div style="text-align:right;color:white">
+    <div style="font-size:11px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Grand Total Net Worth</div>
+    <div style="font-size:30px;font-weight:700;color:var(--gold)">${{ "{:,.0f}".format(report.grand_total or 0) }}</div>
+    <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:4px">Liabilities: ${{ "{:,.0f}".format(report.liabilities_total or 0) }} (separate)</div>
+  </div>
+</div>
+
+<!-- Detailed numbers -->
+<div class="form-grid fade-up stagger-3">
+
+  <div class="card">
+    <div class="card-header"><h3>SACS Summary</h3></div>
+    <div class="card-body">
+      {% set rows = [
+        ('Monthly Inflow', report.inflow, 'neutral'),
+        ('Monthly Outflow', report.outflow, 'negative'),
+        ('Monthly Excess', (report.inflow or 0) - (report.outflow or 0), 'positive'),
+        ('Private Reserve Balance', report.private_reserve_balance, 'neutral'),
+        ('Private Reserve Target', report.private_reserve_target, 'neutral'),
+      ] %}
+      {% for label, val, cls in rows %}
+      <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--bg)">
+        <span style="font-size:13px;color:var(--muted)">{{ label }}</span>
+        <span class="money-{{ cls }}">${{ "{:,.0f}".format(val or 0) }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3>TCC Summary</h3></div>
+    <div class="card-body">
+      {% set rd = report_data %}
+      {% set ab = rd.get('account_balances', {}) %}
+      {% set ret1_accs = accounts|selectattr('account_category', 'equalto', 'retirement')|selectattr('owner', 'equalto', 'client1')|list %}
+      {% set ret2_accs = accounts|selectattr('account_category', 'equalto', 'retirement')|selectattr('owner', 'equalto', 'client2')|list %}
+      {% set nr_accs = accounts|selectattr('account_category', 'equalto', 'non-retirement')|list %}
+
+      {% set ret1_total = namespace(v=0) %}
+      {% for a in ret1_accs %}{% set ret1_total.v = ret1_total.v + (ab.get(a.id|string, 0)|float) %}{% endfor %}
+
+      {% set ret2_total = namespace(v=0) %}
+      {% for a in ret2_accs %}{% set ret2_total.v = ret2_total.v + (ab.get(a.id|string, 0)|float) %}{% endfor %}
+
+      {% set nr_total = namespace(v=0) %}
+      {% for a in nr_accs %}{% set nr_total.v = nr_total.v + (ab.get(a.id|string, 0)|float) %}{% endfor %}
+
+      <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--bg)">
+        <span style="font-size:13px;color:var(--muted)">{{ client.name }} Retirement</span>
+        <span class="money-positive">${{ "{:,.0f}".format(ret1_total.v) }}</span>
+      </div>
+      {% if client.is_married and client.name2 %}
+      <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--bg)">
+        <span style="font-size:13px;color:var(--muted)">{{ client.name2 }} Retirement</span>
+        <span class="money-positive">${{ "{:,.0f}".format(ret2_total.v) }}</span>
+      </div>
+      {% endif %}
+      <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--bg)">
+        <span style="font-size:13px;color:var(--muted)">Non-Retirement</span>
+        <span class="money-positive">${{ "{:,.0f}".format(nr_total.v) }}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--bg)">
+        <span style="font-size:13px;color:var(--muted)">Trust / Property</span>
+        <span class="money-neutral">${{ "{:,.0f}".format(rd.get('trust_value', 0)) }}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:12px 0;background:var(--bg);border-radius:6px;padding:10px 12px;margin-top:8px">
+        <span style="font-size:13px;font-weight:700;color:var(--navy)">Grand Total</span>
+        <span style="font-size:16px;font-weight:700;color:var(--navy)">${{ "{:,.0f}".format(report.grand_total or 0) }}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:10px 0;margin-top:4px">
+        <span style="font-size:13px;color:var(--muted)">Liabilities (separate)</span>
+        <span class="money-negative">${{ "{:,.0f}".format(report.liabilities_total or 0) }}</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

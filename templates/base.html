@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}AW Client Portal{% endblock %} — Windbrook Solutions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #1B2E4B;
+    --navy-light: #243D61;
+    --gold: #C8A84B;
+    --gold-light: #E8D08A;
+    --green: #2E7D5E;
+    --red: #C0392B;
+    --blue-accent: #2471A3;
+    --bg: #F0F3F7;
+    --surface: #FFFFFF;
+    --border: #D8DFE8;
+    --text: #1A1A2E;
+    --muted: #6B7B8F;
+    --sidebar-w: 240px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: var(--sidebar-w);
+    background: var(--navy);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0; left: 0;
+    z-index: 100;
+  }
+
+  .sidebar-logo {
+    padding: 28px 24px 20px;
+    border-bottom: 1px solid rgba(200,168,75,0.25);
+  }
+
+  .sidebar-logo .wordmark {
+    font-family: 'Playfair Display', serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--gold);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .sidebar-logo .tagline {
+    font-size: 10px;
+    color: rgba(255,255,255,0.45);
+    margin-top: 3px;
+    letter-spacing: 0.04em;
+  }
+
+  .sidebar-logo .monogram {
+    width: 38px;
+    height: 38px;
+    background: var(--gold);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    color: var(--navy);
+    font-size: 16px;
+    margin-bottom: 10px;
+  }
+
+  .sidebar nav { padding: 20px 12px; flex: 1; }
+
+  .nav-section-label {
+    font-size: 9px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.3);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 0 12px;
+    margin: 16px 0 8px;
+  }
+
+  .nav-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    color: rgba(255,255,255,0.65);
+    text-decoration: none;
+    font-size: 13.5px;
+    font-weight: 400;
+    transition: all 0.15s;
+    margin-bottom: 2px;
+  }
+
+  .nav-link:hover, .nav-link.active {
+    background: rgba(200,168,75,0.12);
+    color: var(--gold-light);
+  }
+
+  .nav-link .icon { font-size: 15px; opacity: 0.8; }
+
+  .sidebar-footer {
+    padding: 16px 24px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    font-size: 11px;
+    color: rgba(255,255,255,0.3);
+  }
+
+  /* ── Main Content ── */
+  .main {
+    margin-left: var(--sidebar-w);
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .topbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 36px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+
+  .topbar-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--navy);
+  }
+
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .page-content {
+    padding: 36px;
+    flex: 1;
+  }
+
+  /* ── Buttons ── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13.5px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s;
+    text-decoration: none;
+  }
+
+  .btn-primary {
+    background: var(--navy);
+    color: white;
+  }
+  .btn-primary:hover { background: var(--navy-light); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(27,46,75,0.25); }
+
+  .btn-gold {
+    background: var(--gold);
+    color: var(--navy);
+    font-weight: 600;
+  }
+  .btn-gold:hover { background: var(--gold-light); transform: translateY(-1px); }
+
+  .btn-outline {
+    background: transparent;
+    border: 1.5px solid var(--border);
+    color: var(--text);
+  }
+  .btn-outline:hover { border-color: var(--navy); color: var(--navy); }
+
+  .btn-sm { padding: 6px 14px; font-size: 12.5px; }
+  .btn-danger { background: var(--red); color: white; }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--surface);
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  .card-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .card-header h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--navy);
+  }
+
+  .card-body { padding: 24px; }
+
+  /* ── Form Fields ── */
+  .form-group { margin-bottom: 18px; }
+
+  .form-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .form-control {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    color: var(--text);
+    background: white;
+    transition: border-color 0.15s;
+    outline: none;
+  }
+
+  .form-control:focus { border-color: var(--navy); }
+  .form-control.money { font-variant-numeric: tabular-nums; }
+
+  select.form-control { cursor: pointer; }
+
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+  /* ── Table ── */
+  .data-table { width: 100%; border-collapse: collapse; }
+  .data-table th {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 10px 16px;
+    text-align: left;
+    border-bottom: 1.5px solid var(--border);
+  }
+  .data-table td {
+    padding: 14px 16px;
+    font-size: 14px;
+    border-bottom: 1px solid var(--bg);
+  }
+  .data-table tr:last-child td { border-bottom: none; }
+  .data-table tbody tr:hover td { background: var(--bg); }
+
+  /* ── Badge ── */
+  .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .badge-green { background: #E8F5EF; color: var(--green); }
+  .badge-blue { background: #E8F2F9; color: var(--blue-accent); }
+  .badge-gray { background: var(--bg); color: var(--muted); }
+
+  /* ── Stat Cards ── */
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 28px; }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+  }
+
+  .stat-label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+  .stat-value { font-size: 26px; font-weight: 600; color: var(--navy); margin-top: 6px; font-variant-numeric: tabular-nums; }
+  .stat-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+  .stat-card.highlight {
+    background: var(--navy);
+    border-color: var(--navy);
+  }
+  .stat-card.highlight .stat-label { color: rgba(200,168,75,0.7); }
+  .stat-card.highlight .stat-value { color: var(--gold); }
+  .stat-card.highlight .stat-sub { color: rgba(255,255,255,0.5); }
+
+  /* ── Section Header ── */
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+
+  .section-header h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--navy);
+  }
+
+  .page-header {
+    margin-bottom: 30px;
+  }
+
+  .page-header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 4px;
+  }
+
+  .page-header p { color: var(--muted); font-size: 14px; }
+
+  /* ── Breadcrumb ── */
+  .breadcrumb { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
+  .breadcrumb a { color: var(--blue-accent); text-decoration: none; }
+  .breadcrumb a:hover { text-decoration: underline; }
+  .breadcrumb span { margin: 0 6px; }
+
+  /* ── Alert ── */
+  .alert { padding: 12px 16px; border-radius: 8px; font-size: 13.5px; margin-bottom: 20px; }
+  .alert-info { background: #EBF3FA; color: var(--blue-accent); border: 1px solid #BDD8EE; }
+  .alert-success { background: #E8F5EF; color: var(--green); border: 1px solid #B8DFD0; }
+
+  /* ── Divider ── */
+  .divider { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+
+  /* ── Money display ── */
+  .money-positive { color: var(--green); font-weight: 600; }
+  .money-negative { color: var(--red); font-weight: 600; }
+  .money-neutral { color: var(--navy); font-weight: 600; }
+
+  /* ── Account row ── */
+  .acc-row {
+    display: grid;
+    grid-template-columns: 2fr 1.5fr 1fr 1fr auto;
+    gap: 10px;
+    align-items: end;
+    margin-bottom: 10px;
+  }
+
+  .remove-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 18px;
+    padding: 8px;
+    border-radius: 6px;
+    transition: all 0.15s;
+  }
+  .remove-btn:hover { background: #FEE; color: var(--red); }
+
+  /* ── Cashflow visual ── */
+  .cf-visual {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 28px;
+    background: var(--navy);
+    border-radius: 12px;
+    margin-bottom: 24px;
+    overflow-x: auto;
+  }
+
+  .cf-bubble {
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  .cf-circle {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 8px;
+    border: 3px solid rgba(255,255,255,0.2);
+  }
+
+  .cf-circle.green { background: var(--green); }
+  .cf-circle.red { background: var(--red); }
+  .cf-circle.blue { background: var(--blue-accent); }
+
+  .cf-circle .amount { font-size: 18px; font-weight: 700; color: white; }
+  .cf-circle .label { font-size: 10px; color: rgba(255,255,255,0.75); font-weight: 600; letter-spacing: 0.05em; }
+
+  .cf-label { font-size: 12px; color: rgba(255,255,255,0.6); margin-top: 4px; }
+
+  .cf-arrow { color: var(--gold); font-size: 24px; flex-shrink: 0; }
+
+  /* ── Animations ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .fade-up { animation: fadeUp 0.3s ease forwards; }
+
+  .stagger-1 { animation-delay: 0.05s; }
+  .stagger-2 { animation-delay: 0.1s; }
+  .stagger-3 { animation-delay: 0.15s; }
+</style>
+{% block extra_styles %}{% endblock %}
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="monogram">W</div>
+    <div class="wordmark">Windbrook Solutions</div>
+    <div class="tagline">Client Report Portal</div>
+  </div>
+  <nav>
+    <div class="nav-section-label">Navigation</div>
+    <a href="/" class="nav-link {% if request.endpoint == 'index' %}active{% endif %}">
+      <span class="icon">⬡</span> Client Dashboard
+    </a>
+    <a href="/client/new" class="nav-link {% if request.endpoint == 'new_client' %}active{% endif %}">
+      <span class="icon">＋</span> Add Client
+    </a>
+  </nav>
+  <div class="sidebar-footer">
+    AW Portal · v1.0
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-title">{% block topbar_title %}Dashboard{% endblock %}</div>
+    <div class="topbar-right">
+      <span>Windbrook Solutions</span>
+      <span style="color: var(--border)">|</span>
+      <span>{{ now.strftime('%B %d, %Y') if now else '' }}</span>
+    </div>
+  </div>
+
+  <div class="page-content">
+    {% block content %}{% endblock %}
+  </div>
+</div>
+
+{% block scripts %}{% endblock %}
+</body>
+</html>

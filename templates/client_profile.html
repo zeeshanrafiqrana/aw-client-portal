@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+{% block title %}{{ client.name }}{% endblock %}
+{% block topbar_title %}Client Profile{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="/">Dashboard</a> <span>›</span> {{ client.name }}
+</div>
+
+<div class="section-header fade-up">
+  <div>
+    <h2>{{ client.name }}{% if client.is_married and client.name2 %} & {{ client.name2 }}{% endif %}</h2>
+    <p style="color:var(--muted);margin-top:4px">
+      {% if client.is_married %}Married couple{% else %}Individual client{% endif %}
+      · Added to portal
+    </p>
+  </div>
+  <div style="display:flex;gap:10px;">
+    <a href="/client/{{ client.id }}/edit" class="btn btn-outline">Edit Profile</a>
+    <a href="/client/{{ client.id }}/report" class="btn btn-gold">⚡ Generate Report</a>
+  </div>
+</div>
+
+<!-- Client Info -->
+<div class="form-grid fade-up stagger-1" style="margin-bottom:20px">
+  <div class="card">
+    <div class="card-header">
+      <h3>{{ client.name }}</h3>
+      <span class="badge badge-blue">Primary</span>
+    </div>
+    <div class="card-body">
+      <div class="form-grid">
+        <div>
+          <div class="form-label">Date of Birth</div>
+          <div style="font-size:15px;font-weight:500">{{ client.dob or '—' }}</div>
+        </div>
+        <div>
+          <div class="form-label">Age</div>
+          <div style="font-size:15px;font-weight:500">{{ client.age or '—' }}</div>
+        </div>
+        <div>
+          <div class="form-label">SSN (Last 4)</div>
+          <div style="font-size:15px;font-weight:500;letter-spacing:0.1em">XXX-XX-{{ client.ssn_last4 or '?????' }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if client.is_married and client.name2 %}
+  <div class="card">
+    <div class="card-header">
+      <h3>{{ client.name2 }}</h3>
+      <span class="badge badge-gray">Spouse</span>
+    </div>
+    <div class="card-body">
+      <div class="form-grid">
+        <div>
+          <div class="form-label">Date of Birth</div>
+          <div style="font-size:15px;font-weight:500">{{ client.dob2 or '—' }}</div>
+        </div>
+        <div>
+          <div class="form-label">Age</div>
+          <div style="font-size:15px;font-weight:500">{{ client.age2 or '—' }}</div>
+        </div>
+        <div>
+          <div class="form-label">SSN (Last 4)</div>
+          <div style="font-size:15px;font-weight:500;letter-spacing:0.1em">XXX-XX-{{ client.ssn_last4_2 or '?????' }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Financial Summary -->
+<div class="stat-grid fade-up stagger-2">
+  <div class="stat-card highlight">
+    <div class="stat-label">Monthly Inflow</div>
+    <div class="stat-value">${{ "{:,.0f}".format(client.monthly_salary or 0) }}</div>
+    <div class="stat-sub">Take-home pay</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Monthly Outflow</div>
+    <div class="stat-value" style="color:var(--red)">${{ "{:,.0f}".format(client.monthly_expenses or 0) }}</div>
+    <div class="stat-sub">Agreed expense budget</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Monthly Excess</div>
+    {% set excess = (client.monthly_salary or 0) - (client.monthly_expenses or 0) %}
+    <div class="stat-value" style="color:{% if excess >= 0 %}var(--green){% else %}var(--red){% endif %}">${{ "{:,.0f}".format(excess) }}</div>
+    <div class="stat-sub">To Private Reserve</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">PR Target</div>
+    {% set target = (6 * (client.monthly_expenses or 0)) + (client.insurance_deductibles or 0) %}
+    <div class="stat-value" style="font-size:20px">${{ "{:,.0f}".format(target) }}</div>
+    <div class="stat-sub">6 mo. expenses + deductibles</div>
+  </div>
+</div>
+
+<!-- Accounts -->
+<div class="card fade-up stagger-3" style="margin-bottom:20px">
+  <div class="card-header">
+    <h3>Account Structure</h3>
+    <span class="badge badge-gray">{{ accounts|length }} accounts</span>
+  </div>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Account Type</th>
+        <th>Category</th>
+        <th>Owner</th>
+        <th>Last 4</th>
+        <th>Institution</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for acc in accounts %}
+      <tr>
+        <td style="font-weight:500">{{ acc.account_type }}</td>
+        <td>
+          <span class="badge
+            {% if acc.account_category == 'retirement' %}badge-blue
+            {% elif acc.account_category == 'trust' %}badge-green
+            {% else %}badge-gray{% endif %}">
+            {{ acc.account_category|title }}
+          </span>
+        </td>
+        <td style="font-size:13px;color:var(--muted)">
+          {% if acc.owner == 'client1' %}{{ client.name }}
+          {% elif acc.owner == 'client2' %}{{ client.name2 }}
+          {% else %}Joint{% endif %}
+        </td>
+        <td style="font-family:monospace;font-size:13px">
+          {% if acc.last4 %}...{{ acc.last4 }}{% else %}—{% endif %}
+        </td>
+        <td style="font-size:13px;color:var(--muted)">{{ acc.institution or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Liabilities -->
+{% if liabilities %}
+<div class="card fade-up" style="margin-bottom:20px">
+  <div class="card-header">
+    <h3>Liabilities</h3>
+    <span style="font-size:12px;color:var(--muted)">Not deducted from net worth</span>
+  </div>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Interest Rate</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for lib in liabilities %}
+      <tr>
+        <td style="font-weight:500">{{ lib.liability_type }}</td>
+        <td style="color:var(--red)">{{ lib.interest_rate }}%</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<!-- Report History -->
+<div class="card fade-up">
+  <div class="card-header">
+    <h3>Report History</h3>
+    <a href="/client/{{ client.id }}/report" class="btn btn-gold btn-sm">New Report</a>
+  </div>
+  {% if reports %}
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Quarter</th>
+        <th>Date</th>
+        <th>Inflow</th>
+        <th>Net Worth</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in reports %}
+      <tr>
+        <td style="font-weight:600">{{ r.quarter }}</td>
+        <td style="color:var(--muted);font-size:13px">{{ r.report_date[:10] }}</td>
+        <td class="money-neutral">${{ "{:,.0f}".format(r.inflow or 0) }}</td>
+        <td class="money-positive">${{ "{:,.0f}".format(r.grand_total or 0) }}</td>
+        <td>
+          <div style="display:flex;gap:8px;justify-content:flex-end">
+            <a href="/client/{{ client.id }}/report/{{ r.id }}/sacs.pdf" class="btn btn-outline btn-sm" target="_blank">↓ SACS</a>
+            <a href="/client/{{ client.id }}/report/{{ r.id }}/tcc.pdf" class="btn btn-outline btn-sm" target="_blank">↓ TCC</a>
+            <a href="/client/{{ client.id }}/report/{{ r.id }}" class="btn btn-primary btn-sm">View</a>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div style="padding:40px;text-align:center;color:var(--muted);">
+    No reports generated yet.
+    <a href="/client/{{ client.id }}/report" style="color:var(--blue-accent)"> Generate first report →</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

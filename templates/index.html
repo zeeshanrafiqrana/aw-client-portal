@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block topbar_title %}Client Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header fade-up">
+  <h1>Client Overview</h1>
+  <p>Manage client profiles and generate quarterly reports</p>
+</div>
+
+<div class="stat-grid fade-up stagger-1">
+  <div class="stat-card highlight">
+    <div class="stat-label">Active Clients</div>
+    <div class="stat-value">{{ clients|length }}</div>
+    <div class="stat-sub">On retainer</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Reports This Quarter</div>
+    <div class="stat-value">{{ clients|selectattr('last_report_date')|list|length }}</div>
+    <div class="stat-sub">Generated</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Pending Reports</div>
+    <div class="stat-value">{{ clients|rejectattr('last_report_date')|list|length }}</div>
+    <div class="stat-sub">Awaiting data entry</div>
+  </div>
+</div>
+
+<div class="card fade-up stagger-2">
+  <div class="card-header">
+    <h3>All Clients</h3>
+    <a href="/client/new" class="btn btn-gold">
+      <span>＋</span> Add Client
+    </a>
+  </div>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Client Name</th>
+        <th>Type</th>
+        <th>Monthly Inflow</th>
+        <th>Monthly Expenses</th>
+        <th>Last Report</th>
+        <th>Status</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for client in clients %}
+      <tr>
+        <td>
+          <div style="font-weight:600; color: var(--navy);">{{ client.name }}</div>
+          {% if client.is_married and client.name2 %}
+          <div style="font-size:12px; color: var(--muted);">& {{ client.name2 }}</div>
+          {% endif %}
+        </td>
+        <td>
+          <span class="badge {% if client.is_married %}badge-blue{% else %}badge-gray{% endif %}">
+            {{ 'Married' if client.is_married else 'Individual' }}
+          </span>
+        </td>
+        <td class="money-neutral">${{ "{:,.0f}".format(client.monthly_salary or 0) }}<span style="font-size:11px;color:var(--muted)">/mo</span></td>
+        <td style="color: var(--muted)">${{ "{:,.0f}".format(client.monthly_expenses or 0) }}<span style="font-size:11px">/mo</span></td>
+        <td style="font-size:13px; color: var(--muted)">
+          {% if client.last_report_date %}
+            {{ client.last_report_date[:10] }}
+          {% else %}
+            <span style="color: var(--muted); font-style:italic">Never</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if client.last_report_date %}
+            <span class="badge badge-green">✓ Reported</span>
+          {% else %}
+            <span class="badge badge-gray">Pending</span>
+          {% endif %}
+        </td>
+        <td>
+          <div style="display:flex;gap:8px;justify-content:flex-end">
+            <a href="/client/{{ client.id }}/report" class="btn btn-gold btn-sm">Generate Report</a>
+            <a href="/client/{{ client.id }}" class="btn btn-outline btn-sm">Profile</a>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+      {% if not clients %}
+      <tr>
+        <td colspan="7" style="text-align:center; padding:40px; color:var(--muted);">
+          No clients yet. <a href="/client/new" style="color: var(--blue-accent)">Add your first client →</a>
+        </td>
+      </tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

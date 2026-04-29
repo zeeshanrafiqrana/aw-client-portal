@@ -1,0 +1,412 @@
+{% extends "base.html" %}
+{% block title %}Generate Report — {{ client.name }}{% endblock %}
+{% block topbar_title %}Generate Quarterly Report{% endblock %}
+
+{% block extra_styles %}
+<style>
+  .report-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+  .report-section-header {
+    background: var(--navy);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .report-section-header h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--gold);
+    margin: 0;
+  }
+  .report-section-header .badge-num {
+    background: var(--gold);
+    color: var(--navy);
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .report-section-body { padding: 24px; }
+
+  .calc-preview {
+    background: var(--navy);
+    border-radius: 12px;
+    padding: 24px;
+    position: sticky;
+    top: 80px;
+    color: white;
+  }
+
+  .calc-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .calc-row:last-child { border-bottom: none; }
+  .calc-row .calc-label { font-size: 13px; color: rgba(255,255,255,0.65); }
+  .calc-row .calc-val { font-size: 15px; font-weight: 600; }
+  .calc-row .calc-val.pos { color: #5DADE2; }
+  .calc-row .calc-val.neg { color: #E74C3C; }
+  .calc-row .calc-val.gold { color: var(--gold); }
+  .calc-row .calc-val.green { color: #58D68D; }
+
+  .grand-total-row {
+    background: rgba(200,168,75,0.15);
+    border-radius: 8px;
+    padding: 14px;
+    margin-top: 16px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .grand-total-row .label { font-size: 12px; color: var(--gold-light); font-weight: 600; }
+  .grand-total-row .value { font-size: 20px; font-weight: 700; color: var(--gold); }
+
+  .field-with-ref {
+    position: relative;
+  }
+  .field-ref {
+    position: absolute;
+    right: 0;
+    top: -18px;
+    font-size: 10px;
+    color: var(--muted);
+    font-style: italic;
+  }
+
+  .report-layout {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 24px;
+    align-items: start;
+  }
+
+  @media (max-width: 900px) {
+    .report-layout { grid-template-columns: 1fr; }
+    .calc-preview { position: static; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="/">Dashboard</a> <span>›</span>
+  <a href="/client/{{ client.id }}">{{ client.name }}</a> <span>›</span>
+  Generate Report
+</div>
+
+<div class="page-header fade-up">
+  <h1>Quarterly Report</h1>
+  <p>{{ client.name }}{% if client.is_married and client.name2 %} & {{ client.name2 }}{% endif %} · Enter current balances to generate SACS and TCC PDFs</p>
+</div>
+
+{% if last_report %}
+<div class="alert alert-info fade-up">
+  ℹ️ Previous report: <strong>{{ last_report.quarter }}</strong> ({{ last_report.report_date[:10] }}) — balances from that report are shown as reference
+</div>
+{% endif %}
+
+<form method="POST" action="/client/{{ client.id }}/report">
+<div class="report-layout">
+
+  <!-- Left: data entry -->
+  <div>
+
+    <!-- Quarter -->
+    <div class="report-section fade-up">
+      <div class="report-section-header">
+        <div class="badge-num">0</div>
+        <h3>Report Period</h3>
+      </div>
+      <div class="report-section-body">
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Quarter Label</label>
+            <input class="form-control" name="quarter" value="Q{{ ((now.month - 1) // 3 + 1) }} {{ now.year }}" placeholder="Q2 2026">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SACS Section -->
+    <div class="report-section fade-up stagger-1">
+      <div class="report-section-header">
+        <div class="badge-num">1</div>
+        <h3>SACS — Cash Flow Data</h3>
+      </div>
+      <div class="report-section-body">
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Monthly Inflow (Take-Home Pay) $</label>
+            <div class="field-with-ref">
+              {% if last_report %}<span class="field-ref">Last: ${{ "{:,.0f}".format(last_report.inflow or 0) }}</span>{% endif %}
+              <input class="form-control money" type="number" name="inflow" id="inflow"
+                value="{{ client.monthly_salary }}" oninput="recalc()" required step="0.01">
+            </div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px">Pre-filled from client profile</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Monthly Outflow (Expense Budget) $</label>
+            <div class="field-with-ref">
+              {% if last_report %}<span class="field-ref">Last: ${{ "{:,.0f}".format(last_report.outflow or 0) }}</span>{% endif %}
+              <input class="form-control money" type="number" name="outflow" id="outflow"
+                value="{{ client.monthly_expenses }}" oninput="recalc()" required step="0.01">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Private Reserve — Current Balance $</label>
+            <div class="field-with-ref">
+              {% if last_report %}<span class="field-ref">Last: ${{ "{:,.0f}".format(last_report.private_reserve_balance or 0) }}</span>{% endif %}
+              <input class="form-control money" type="number" name="private_reserve_balance" id="pr_bal"
+                oninput="recalc()" required step="0.01" placeholder="0">
+            </div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px">Current balance in high-yield savings</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Schwab Investment Portfolio Balance $</label>
+            <input class="form-control money" type="number" name="investment_balance" id="inv_bal"
+              oninput="recalc()" step="0.01" placeholder="0">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TCC: Retirement Accounts -->
+    {% set ret1_accs = accounts|selectattr('account_category', 'equalto', 'retirement')|selectattr('owner', 'equalto', 'client1')|list %}
+    {% set ret2_accs = accounts|selectattr('account_category', 'equalto', 'retirement')|selectattr('owner', 'equalto', 'client2')|list %}
+    {% set nr_accs = accounts|selectattr('account_category', 'equalto', 'non-retirement')|list %}
+    {% set trust_accs = accounts|selectattr('account_category', 'equalto', 'trust')|list %}
+
+    <div class="report-section fade-up stagger-2">
+      <div class="report-section-header">
+        <div class="badge-num">2</div>
+        <h3>TCC — Account Balances</h3>
+      </div>
+      <div class="report-section-body">
+
+        {% if ret1_accs %}
+        <div style="margin-bottom:20px">
+          <div style="font-size:12px;font-weight:600;color:var(--navy);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;padding-bottom:6px;border-bottom:2px solid var(--border)">
+            {{ client.name }} — Retirement Accounts
+          </div>
+          {% for acc in ret1_accs %}
+          <div class="form-group" style="margin-bottom:12px">
+            <label class="form-label">{{ acc.account_type }} {% if acc.last4 %}(...{{ acc.last4 }}){% endif %} — {{ acc.institution }} $</label>
+            <input class="form-control money" type="number" name="acc_{{ acc.id }}" id="acc_{{ acc.id }}"
+              oninput="recalc()" step="0.01" placeholder="0" required>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if client.is_married and ret2_accs %}
+        <div style="margin-bottom:20px">
+          <div style="font-size:12px;font-weight:600;color:var(--navy);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;padding-bottom:6px;border-bottom:2px solid var(--border)">
+            {{ client.name2 }} — Retirement Accounts
+          </div>
+          {% for acc in ret2_accs %}
+          <div class="form-group" style="margin-bottom:12px">
+            <label class="form-label">{{ acc.account_type }} {% if acc.last4 %}(...{{ acc.last4 }}){% endif %} — {{ acc.institution }} $</label>
+            <input class="form-control money" type="number" name="acc_{{ acc.id }}" id="acc_{{ acc.id }}"
+              oninput="recalc()" step="0.01" placeholder="0" required>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if nr_accs %}
+        <div style="margin-bottom:20px">
+          <div style="font-size:12px;font-weight:600;color:var(--navy);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;padding-bottom:6px;border-bottom:2px solid var(--border)">
+            Non-Retirement Accounts
+          </div>
+          {% for acc in nr_accs %}
+          <div class="form-group" style="margin-bottom:12px">
+            <label class="form-label">{{ acc.account_type }} {% if acc.last4 %}(...{{ acc.last4 }}){% endif %} — {{ acc.institution }} $</label>
+            <input class="form-control money" type="number" name="acc_{{ acc.id }}" id="acc_{{ acc.id }}"
+              oninput="recalc()" step="0.01" placeholder="0" required>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if trust_accs %}
+        <div style="margin-bottom:20px">
+          <div style="font-size:12px;font-weight:600;color:var(--navy);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;padding-bottom:6px;border-bottom:2px solid var(--border)">
+            Trust / Property (Zillow Zestimate)
+          </div>
+          <div class="form-group">
+            <label class="form-label">Primary Residence — Current Zillow Value $</label>
+            <input class="form-control money" type="number" name="trust_value" id="trust_val"
+              oninput="recalc()" step="0.01" placeholder="0">
+          </div>
+        </div>
+        {% endif %}
+
+      </div>
+    </div>
+
+    <!-- Liabilities -->
+    {% if liabilities %}
+    <div class="report-section fade-up stagger-3">
+      <div class="report-section-header">
+        <div class="badge-num">3</div>
+        <h3>Liability Balances</h3>
+      </div>
+      <div class="report-section-body">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:16px">Displayed separately — not deducted from net worth</div>
+        {% for lib in liabilities %}
+        <div class="form-group">
+          <label class="form-label">{{ lib.liability_type }} ({{ lib.interest_rate }}% interest) — Current Balance $</label>
+          <input class="form-control money" type="number" name="lib_{{ lib.id }}" id="lib_{{ lib.id }}"
+            oninput="recalc()" step="0.01" placeholder="0">
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <div style="display:flex;gap:12px;justify-content:flex-end" class="fade-up">
+      <a href="/client/{{ client.id }}" class="btn btn-outline">Cancel</a>
+      <button type="submit" class="btn btn-gold" style="padding:12px 28px;font-size:15px">
+        ⚡ Generate Reports
+      </button>
+    </div>
+
+  </div>
+
+  <!-- Right: Live Preview -->
+  <div class="fade-up stagger-2">
+    <div class="calc-preview">
+      <div style="font-family:'Playfair Display',serif;font-size:14px;color:var(--gold);margin-bottom:16px;font-weight:600">
+        Live Calculations
+      </div>
+
+      <div style="font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">SACS</div>
+
+      <div class="calc-row">
+        <span class="calc-label">Monthly Inflow</span>
+        <span class="calc-val green" id="p_inflow">$0</span>
+      </div>
+      <div class="calc-row">
+        <span class="calc-label">Monthly Outflow</span>
+        <span class="calc-val neg" id="p_outflow">$0</span>
+      </div>
+      <div class="calc-row">
+        <span class="calc-label">↳ Monthly Excess</span>
+        <span class="calc-val pos" id="p_excess">$0</span>
+      </div>
+      <div class="calc-row">
+        <span class="calc-label">PR Balance</span>
+        <span class="calc-val gold" id="p_pr">$0</span>
+      </div>
+      <div class="calc-row">
+        <span class="calc-label">PR Target</span>
+        <span class="calc-val" style="color:rgba(255,255,255,0.6)" id="p_target">$0</span>
+      </div>
+
+      <div style="font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;margin-top:16px">TCC</div>
+
+      <div class="calc-row">
+        <span class="calc-label">{{ client.name }} Retirement</span>
+        <span class="calc-val pos" id="p_ret1">$0</span>
+      </div>
+      {% if client.is_married and client.name2 %}
+      <div class="calc-row">
+        <span class="calc-label">{{ client.name2 }} Retirement</span>
+        <span class="calc-val pos" id="p_ret2">$0</span>
+      </div>
+      {% endif %}
+      <div class="calc-row">
+        <span class="calc-label">Non-Retirement</span>
+        <span class="calc-val pos" id="p_nr">$0</span>
+      </div>
+      <div class="calc-row">
+        <span class="calc-label">Trust / Property</span>
+        <span class="calc-val gold" id="p_trust">$0</span>
+      </div>
+
+      <div class="grand-total-row">
+        <div class="label">GRAND TOTAL NET WORTH</div>
+        <div class="value" id="p_grand">$0</div>
+      </div>
+
+      <div style="margin-top:16px;font-size:11px;color:rgba(255,255,255,0.35);text-align:center">
+        All calculations update in real time
+      </div>
+    </div>
+  </div>
+
+</div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const INS_DED = {{ client.insurance_deductibles or 0 }};
+  const RET1_IDS = [{% for a in accounts if a.account_category == 'retirement' and a.owner == 'client1' %}'acc_{{ a.id }}',{% endfor %}];
+  const RET2_IDS = [{% for a in accounts if a.account_category == 'retirement' and a.owner == 'client2' %}'acc_{{ a.id }}',{% endfor %}];
+  const NR_IDS   = [{% for a in accounts if a.account_category == 'non-retirement' %}'acc_{{ a.id }}',{% endfor %}];
+
+  function fmtDollar(n) {
+    return '$' + Math.round(n).toLocaleString('en-US');
+  }
+
+  function getVal(id) {
+    const el = document.getElementById(id);
+    return el ? (parseFloat(el.value) || 0) : 0;
+  }
+
+  function sumIds(ids) {
+    return ids.reduce((s, id) => s + getVal(id), 0);
+  }
+
+  function setEl(id, text, color) {
+    const el = document.getElementById(id);
+    if (el) {
+      el.textContent = text;
+      if (color) el.style.color = color;
+    }
+  }
+
+  function recalc() {
+    const inflow   = getVal('inflow');
+    const outflow  = getVal('outflow');
+    const excess   = inflow - outflow;
+    const pr_bal   = getVal('pr_bal');
+    const pr_tgt   = (6 * outflow) + INS_DED;
+    const trust    = getVal('trust_val');
+
+    const ret1 = sumIds(RET1_IDS);
+    const ret2 = sumIds(RET2_IDS);
+    const nr   = sumIds(NR_IDS);
+    const grand = ret1 + ret2 + nr + trust;
+
+    setEl('p_inflow', fmtDollar(inflow));
+    setEl('p_outflow', fmtDollar(outflow));
+    setEl('p_excess', fmtDollar(excess), excess >= 0 ? '#5DADE2' : '#E74C3C');
+    setEl('p_pr', fmtDollar(pr_bal));
+    setEl('p_target', fmtDollar(pr_tgt));
+    setEl('p_ret1', fmtDollar(ret1));
+    setEl('p_ret2', fmtDollar(ret2));
+    setEl('p_nr', fmtDollar(nr));
+    setEl('p_trust', fmtDollar(trust));
+    setEl('p_grand', fmtDollar(grand));
+  }
+
+  // Init on page load
+  recalc();
+</script>
+{% endblock %}

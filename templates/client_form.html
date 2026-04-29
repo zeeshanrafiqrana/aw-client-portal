@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+{% block title %}{% if client %}Edit {{ client.name }}{% else %}New Client{% endif %}{% endblock %}
+{% block topbar_title %}{% if client %}Edit Client{% else %}Add Client{% endif %}{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="/">Dashboard</a> <span>›</span>
+  {% if client %}<a href="/client/{{ client.id }}">{{ client.name }}</a> <span>›</span> Edit{% else %}Add Client{% endif %}
+</div>
+
+<div class="page-header fade-up">
+  <h1>{% if client %}Edit Client Profile{% else %}New Client{% endif %}</h1>
+  <p>Enter static information once — it will be pre-filled in all future reports</p>
+</div>
+
+<form method="POST" action="{% if client %}/client/{{ client.id }}/edit{% else %}/client/new{% endif %}">
+
+  <!-- Married toggle -->
+  <div class="card fade-up" style="margin-bottom:20px">
+    <div class="card-body">
+      <label style="display:flex;align-items:center;gap:12px;cursor:pointer;user-select:none">
+        <input type="checkbox" name="is_married" id="is_married"
+          {% if client and client.is_married %}checked{% endif %}
+          onchange="toggleSpouse(this.checked)"
+          style="width:18px;height:18px;cursor:pointer;accent-color:var(--navy)">
+        <span style="font-size:15px;font-weight:500">This client is married (joint household)</span>
+      </label>
+    </div>
+  </div>
+
+  <!-- Client 1 -->
+  <div class="card fade-up stagger-1" style="margin-bottom:20px">
+    <div class="card-header"><h3>Primary Client</h3></div>
+    <div class="card-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Full Name *</label>
+          <input class="form-control" name="name" required value="{{ client.name if client else '' }}" placeholder="James Whitfield">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Date of Birth</label>
+          <input class="form-control" type="date" name="dob" value="{{ client.dob if client else '' }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">SSN Last 4 Digits</label>
+          <input class="form-control" name="ssn_last4" maxlength="4" value="{{ client.ssn_last4 if client else '' }}" placeholder="4821">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Spouse (shown conditionally) -->
+  <div id="spouse-section" class="card fade-up stagger-1" style="margin-bottom:20px; {% if not (client and client.is_married) %}display:none{% endif %}">
+    <div class="card-header"><h3>Spouse</h3></div>
+    <div class="card-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Spouse Full Name</label>
+          <input class="form-control" name="name2" value="{{ client.name2 if client else '' }}" placeholder="Patricia Whitfield">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Spouse Date of Birth</label>
+          <input class="form-control" type="date" name="dob2" value="{{ client.dob2 if client else '' }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Spouse SSN Last 4</label>
+          <input class="form-control" name="ssn_last4_2" maxlength="4" value="{{ client.ssn_last4_2 if client else '' }}" placeholder="7392">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Financial Setup -->
+  <div class="card fade-up stagger-2" style="margin-bottom:20px">
+    <div class="card-header"><h3>Financial Setup</h3></div>
+    <div class="card-body">
+      <div class="form-grid-3">
+        <div class="form-group">
+          <label class="form-label">Monthly Take-Home Pay (Inflow) $</label>
+          <input class="form-control money" type="number" name="monthly_salary" step="0.01"
+            value="{{ client.monthly_salary if client else '' }}" placeholder="15000">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Agreed Monthly Expenses (Outflow) $</label>
+          <input class="form-control money" type="number" name="monthly_expenses" step="0.01"
+            value="{{ client.monthly_expenses if client else '' }}" placeholder="11000">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Total Insurance Deductibles $</label>
+          <input class="form-control money" type="number" name="insurance_deductibles" step="0.01"
+            value="{{ client.insurance_deductibles if client else '' }}" placeholder="3500">
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">Used for Private Reserve target calc</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Accounts -->
+  <div class="card fade-up stagger-2" style="margin-bottom:20px">
+    <div class="card-header">
+      <h3>Account Structure</h3>
+      <button type="button" class="btn btn-outline btn-sm" onclick="addAccount()">+ Add Account</button>
+    </div>
+    <div class="card-body">
+      <div style="display:grid;grid-template-columns:2fr 1.5fr 1fr 1fr 1fr auto;gap:8px;margin-bottom:6px">
+        <div class="form-label">Account Type</div>
+        <div class="form-label">Category</div>
+        <div class="form-label">Owner</div>
+        <div class="form-label">Last 4</div>
+        <div class="form-label">Institution</div>
+        <div></div>
+      </div>
+      <div id="accounts-container">
+        {% if accounts %}
+          {% for acc in accounts %}
+          <div class="acc-row">
+            <input class="form-control" name="account_type[]" value="{{ acc.account_type }}" placeholder="e.g. Roth IRA">
+            <select class="form-control" name="account_category[]">
+              <option value="retirement" {% if acc.account_category == 'retirement' %}selected{% endif %}>Retirement</option>
+              <option value="non-retirement" {% if acc.account_category == 'non-retirement' %}selected{% endif %}>Non-Retirement</option>
+              <option value="trust" {% if acc.account_category == 'trust' %}selected{% endif %}>Trust / Property</option>
+            </select>
+            <select class="form-control" name="account_owner[]">
+              <option value="client1" {% if acc.owner == 'client1' %}selected{% endif %}>Client 1</option>
+              <option value="client2" {% if acc.owner == 'client2' %}selected{% endif %}>Client 2</option>
+              <option value="joint" {% if acc.owner == 'joint' %}selected{% endif %}>Joint</option>
+            </select>
+            <input class="form-control" name="account_last4[]" value="{{ acc.last4 }}" maxlength="4" placeholder="1234">
+            <input class="form-control" name="account_institution[]" value="{{ acc.institution }}" placeholder="Schwab">
+            <button type="button" class="remove-btn" onclick="this.parentElement.remove()">✕</button>
+          </div>
+          {% endfor %}
+        {% else %}
+          <!-- Default rows -->
+          <div class="acc-row">
+            <input class="form-control" name="account_type[]" value="Roth IRA" placeholder="e.g. Roth IRA">
+            <select class="form-control" name="account_category[]">
+              <option value="retirement" selected>Retirement</option>
+              <option value="non-retirement">Non-Retirement</option>
+              <option value="trust">Trust / Property</option>
+            </select>
+            <select class="form-control" name="account_owner[]">
+              <option value="client1" selected>Client 1</option>
+              <option value="client2">Client 2</option>
+              <option value="joint">Joint</option>
+            </select>
+            <input class="form-control" name="account_last4[]" maxlength="4" placeholder="1234">
+            <input class="form-control" name="account_institution[]" value="Charles Schwab" placeholder="Schwab">
+            <button type="button" class="remove-btn" onclick="this.parentElement.remove()">✕</button>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Liabilities -->
+  <div class="card fade-up stagger-3" style="margin-bottom:20px">
+    <div class="card-header">
+      <h3>Liabilities</h3>
+      <button type="button" class="btn btn-outline btn-sm" onclick="addLiability()">+ Add Liability</button>
+    </div>
+    <div class="card-body">
+      <div style="display:grid;grid-template-columns:2fr 1fr auto;gap:8px;margin-bottom:6px">
+        <div class="form-label">Type</div>
+        <div class="form-label">Interest Rate %</div>
+        <div></div>
+      </div>
+      <div id="liabilities-container">
+        {% if liabilities %}
+          {% for lib in liabilities %}
+          <div style="display:grid;grid-template-columns:2fr 1fr auto;gap:8px;margin-bottom:8px;align-items:end">
+            <input class="form-control" name="liability_type[]" value="{{ lib.liability_type }}" placeholder="e.g. Mortgage">
+            <input class="form-control" name="liability_rate[]" type="number" step="0.01" value="{{ lib.interest_rate }}" placeholder="3.25">
+            <button type="button" class="remove-btn" onclick="this.parentElement.remove()">✕</button>
+          </div>
+          {% endfor %}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:12px;justify-content:flex-end" class="fade-up">
+    <a href="{% if client %}/client/{{ client.id }}{% else %}/{% endif %}" class="btn btn-outline">Cancel</a>
+    <button type="submit" class="btn btn-gold">
+      {% if client %}Save Changes{% else %}Create Client Profile{% endif %}
+    </button>
+  </div>
+</form>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleSpouse(show) {
+  document.getElementById('spouse-section').style.display = show ? '' : 'none';
+}
+
+function addAccount() {
+  const container = document.getElementById('accounts-container');
+  const div = document.createElement('div');
+  div.className = 'acc-row';
+  div.innerHTML = `
+    <input class="form-control" name="account_type[]" placeholder="e.g. Roth IRA">
+    <select class="form-control" name="account_category[]">
+      <option value="retirement">Retirement</option>
+      <option value="non-retirement">Non-Retirement</option>
+      <option value="trust">Trust / Property</option>
+    </select>
+    <select class="form-control" name="account_owner[]">
+      <option value="client1">Client 1</option>
+      <option value="client2">Client 2</option>
+      <option value="joint">Joint</option>
+    </select>
+    <input class="form-control" name="account_last4[]" maxlength="4" placeholder="1234">
+    <input class="form-control" name="account_institution[]" placeholder="Institution">
+    <button type="button" class="remove-btn" onclick="this.parentElement.remove()">✕</button>
+  `;
+  container.appendChild(div);
+}
+
+function addLiability() {
+  const container = document.getElementById('liabilities-container');
+  const div = document.createElement('div');
+  div.style.cssText = 'display:grid;grid-template-columns:2fr 1fr auto;gap:8px;margin-bottom:8px;align-items:end';
+  div.innerHTML = `
+    <input class="form-control" name="liability_type[]" placeholder="e.g. Mortgage">
+    <input class="form-control" name="liability_rate[]" type="number" step="0.01" placeholder="3.25">
+    <button type="button" class="remove-btn" onclick="this.parentElement.remove()">✕</button>
+  `;
+  container.appendChild(div);
+}
+</script>
+{% endblock %}
